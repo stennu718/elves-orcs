@@ -1,18 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import {
+  CHARACTERS, selectSpies, countSpiesInCouncil, checkAccusation,
+  toggleNote, combinations, MAX_DAY, COUNCIL_SIZE, SPY_COUNT,
+} from '../src/game/logic';
+import type { NoteStatus } from '../src/game/logic';
 
-// Game logic extracted from App.tsx for testing
-// These are pure functions that can be tested without React
-
-const CHARACTERS = [
-  { id: 'knight', name: 'Sir Reginald', role: 'The Knight' },
-  { id: 'diplomat', name: 'Lady Elara', role: 'The Diplomat' },
-  { id: 'bishop', name: 'Bishop Thorne', role: 'The Bishop' },
-  { id: 'treasurer', name: 'Lord Vance', role: 'The Treasurer' },
-  { id: 'merchant', name: 'Madam Silk', role: 'The Merchant' },
-  { id: 'jester', name: 'Jester Puck', role: 'The Jester' },
-  { id: 'queen', name: 'Queen Eleanor', role: 'The Queen' },
-  { id: 'guard', name: 'Captain Kael', role: 'The Guard' },
-];
+// Mock App.tsx CHARACTERS to match logic.ts
+vi.mock('../src/App', () => ({ default: () => null }));
 
 describe('Game Constants', () => {
   it('has exactly 8 characters', () => {
@@ -35,21 +29,20 @@ describe('Game Constants', () => {
       expect(c.role.length).toBeGreaterThan(0);
     }
   });
+
+  it('MAX_DAY is 5', () => { expect(MAX_DAY).toBe(5); });
+  it('COUNCIL_SIZE is 3', () => { expect(COUNCIL_SIZE).toBe(3); });
+  it('SPY_COUNT is 2', () => { expect(SPY_COUNT).toBe(2); });
 });
 
-describe('Spy Selection', () => {
-  function selectSpies(): string[] {
-    const shuffled = [...CHARACTERS].sort(() => 0.5 - Math.random());
-    return [shuffled[0].id, shuffled[1].id];
-  }
-
+describe('selectSpies', () => {
   it('selects exactly 2 spies', () => {
-    const spies = selectSpies();
+    const spies = selectSpies(() => 0.5);
     expect(spies).toHaveLength(2);
   });
 
   it('spies are different characters', () => {
-    const spies = selectSpies();
+    const spies = selectSpies(() => 0.5);
     expect(spies[0]).not.toBe(spies[1]);
   });
 
@@ -69,16 +62,20 @@ describe('Spy Selection', () => {
       selectedSpies.add(spies[0]);
       selectedSpies.add(spies[1]);
     }
-    // With 1000 iterations, all 8 should appear at least once
     expect(selectedSpies.size).toBe(8);
+  });
+
+  it('uses injected random function', () => {
+    // random=0.5 means shuffled stays in original order
+    const spies = selectSpies(() => 0.5);
+    // With 0.5, sort is stable-ish; just verify we get 2 valid ids
+    expect(spies).toHaveLength(2);
+    expect(CHARACTERS.map(c => c.id)).toContain(spies[0]);
+    expect(CHARACTERS.map(c => c.id)).toContain(spies[1]);
   });
 });
 
-describe('Council Logic', () => {
-  function countSpiesInCouncil(council: string[], spies: string[]): number {
-    return council.filter(id => spies.includes(id)).length;
-  }
-
+describe('countSpiesInCouncil', () => {
   it('counts 0 spies when none in council', () => {
     expect(countSpiesInCouncil(['knight', 'diplomat', 'bishop'], ['queen', 'guard'])).toBe(0);
   });
@@ -96,12 +93,7 @@ describe('Council Logic', () => {
   });
 });
 
-describe('Accusation Logic', () => {
-  function checkAccusation(accused: string[], spies: string[]): boolean {
-    if (accused.length !== 2) return false;
-    return accused.every(id => spies.includes(id));
-  }
-
+describe('checkAccusation', () => {
   it('correct accusation wins', () => {
     expect(checkAccusation(['queen', 'guard'], ['queen', 'guard'])).toBe(true);
   });
@@ -128,72 +120,50 @@ describe('Accusation Logic', () => {
   });
 });
 
-describe('Game Flow', () => {
-  it('game has 5 days', () => {
-    const MAX_DAY = 5;
-    expect(MAX_DAY).toBe(5);
-  });
-
-  it('council size is 3', () => {
-    const COUNCIL_SIZE = 3;
-    expect(COUNCIL_SIZE).toBe(3);
-  });
-
-  it('total possible councils from 8 characters choose 3', () => {
-    // C(8,3) = 56
-    const n = 8;
-    const k = 3;
-    const combinations = (n: number, k: number): number => {
-      if (k === 0 || k === n) return 1;
-      return combinations(n - 1, k - 1) + combinations(n - 1, k);
-    };
-    expect(combinations(n, k)).toBe(56);
-  });
-
-  it('total possible accusations from 8 characters choose 2', () => {
-    // C(8,2) = 28
-    const n = 8;
-    const k = 2;
-    const combinations = (n: number, k: number): number => {
-      if (k === 0 || k === n) return 1;
-      return combinations(n - 1, k - 1) + combinations(n - 1, k);
-    };
-    expect(combinations(n, k)).toBe(28);
-  });
-
-  it('only 1 correct accusation out of 28 possible', () => {
-    const totalCombinations = 28;
-    const correctCombinations = 1;
-    const winProbability = correctCombinations / totalCombinations;
-    expect(winProbability).toBeCloseTo(0.0357, 3);
-  });
-});
-
-describe('Note Status', () => {
-  type NoteStatus = 'unknown' | 'innocent' | 'spy';
-
-  function toggleNote(current: NoteStatus, clicked: NoteStatus): NoteStatus {
-    return current === clicked ? 'unknown' : clicked;
-  }
-
+describe('toggleNote', () => {
   it('toggles from unknown to spy', () => {
-    expect(toggleNote('unknown', 'spy')).toBe('spy');
+    expect(toggleNote('unknown' as NoteStatus, 'spy' as NoteStatus)).toBe('spy');
   });
 
   it('toggles from spy back to unknown', () => {
-    expect(toggleNote('spy', 'spy')).toBe('unknown');
+    expect(toggleNote('spy' as NoteStatus, 'spy' as NoteStatus)).toBe('unknown');
   });
 
   it('toggles from innocent to spy', () => {
-    expect(toggleNote('innocent', 'spy')).toBe('spy');
+    expect(toggleNote('innocent' as NoteStatus, 'spy' as NoteStatus)).toBe('spy');
   });
 
   it('toggles from unknown to innocent', () => {
-    expect(toggleNote('unknown', 'innocent')).toBe('innocent');
+    expect(toggleNote('unknown' as NoteStatus, 'innocent' as NoteStatus)).toBe('innocent');
   });
 
   it('all note statuses are valid', () => {
     const validStatuses: NoteStatus[] = ['unknown', 'innocent', 'spy'];
     expect(validStatuses).toHaveLength(3);
+  });
+});
+
+describe('combinations', () => {
+  it('C(8,3) = 56 (total possible councils)', () => {
+    expect(combinations(8, 3)).toBe(56);
+  });
+
+  it('C(8,2) = 28 (total possible accusations)', () => {
+    expect(combinations(8, 2)).toBe(28);
+  });
+
+  it('C(n,0) = 1', () => {
+    expect(combinations(5, 0)).toBe(1);
+  });
+
+  it('C(n,n) = 1', () => {
+    expect(combinations(5, 5)).toBe(1);
+  });
+
+  it('only 1 correct accusation out of 28 possible', () => {
+    const totalCombinations = combinations(8, 2);
+    const correctCombinations = 1;
+    const winProbability = correctCombinations / totalCombinations;
+    expect(winProbability).toBeCloseTo(0.0357, 3);
   });
 });

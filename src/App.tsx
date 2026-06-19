@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Sword, Scroll, Book, Coins, ShoppingBag, VenetianMask, Crown, Shield, Check, Skull, AlertTriangle, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { selectSpies, countSpiesInCouncil, checkAccusation } from './game/logic';
+import type { NoteStatus } from './game/logic';
 
-type NoteStatus = 'unknown' | 'innocent' | 'spy';
+type CharacterIcon = typeof Sword;
 
 interface Character {
   id: string;
   name: string;
   role: string;
-  icon: React.ElementType;
+  icon: CharacterIcon;
 }
 
 const CHARACTERS: Character[] = [
@@ -37,8 +39,8 @@ export default function App() {
   }, []);
 
   const startNewGame = () => {
-    const shuffled = [...CHARACTERS].sort(() => 0.5 - Math.random());
-    setSpies([shuffled[0].id, shuffled[1].id]);
+    const spyIds = selectSpies();
+    setSpies(spyIds);
     setGameState('playing');
     setDay(1);
     setHistory([]);
@@ -73,7 +75,7 @@ export default function App() {
 
   const dispatchCouncil = () => {
     if (currentCouncil.length !== 3) return;
-    const spiesCount = currentCouncil.filter(id => spies.includes(id)).length;
+    const spiesCount = countSpiesInCouncil(currentCouncil, spies);
     setHistory([{ day, council: currentCouncil, spiesCount }, ...history]);
     setCurrentCouncil([]);
 
@@ -87,7 +89,7 @@ export default function App() {
 
   const executeAccusation = () => {
     if (accused.length !== 2) return;
-    const correct = accused.every(id => spies.includes(id));
+    const correct = checkAccusation(accused, spies);
     if (correct) {
       setGameState('won');
     } else {
@@ -139,7 +141,7 @@ export default function App() {
                       <div className="text-slate-500 text-xs">{char.role}</div>
                     </div>
                   </div>
-                )
+                );
               })}
             </div>
           </div>
@@ -281,7 +283,7 @@ export default function App() {
                             )}
                           </AnimatePresence>
                         </div>
-                      )
+                      );
                     })}
                   </div>
                   <button
@@ -350,7 +352,7 @@ export default function App() {
                           )}
                         </AnimatePresence>
                       </div>
-                    )
+                    );
                   })}
                 </div>
                 
@@ -411,7 +413,7 @@ export default function App() {
                             <char.icon size={18} className="text-slate-400 mb-2" />
                             <span className="text-[10px] text-slate-300 leading-tight uppercase tracking-wider font-medium">{char.name.split(' ')[0]}</span>
                           </div>
-                        )
+                        );
                       })}
                     </div>
                   </motion.div>
