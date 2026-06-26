@@ -1,8 +1,7 @@
 # Elves & Orcs
 
 [![CI](https://github.com/stennu718/elves-orcs/actions/workflows/tests.yml/badge.svg)](https://github.com/stennu718/elves-orcs/actions/workflows/tests.yml)
-[![Docker](https://github.com/stennu718/elves-orcs/actions/workflows/docker.yml/badge.svg)](https://github.com/stennu718/elves-orcs/actions/workflows/docker.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ![Gameplay](docs/screenshot.png)
 
@@ -32,6 +31,14 @@ Originally a tabletop game popular in Estonia, Kings & Spies tests your ability 
 **Correct guess = Victory. Wrong guess = The kingdom falls.**
 
 The key is to cross-reference mission results: if a mission with 3 characters returned 0 spies, all three are safe. Use logic and deduction to narrow down the suspects!
+
+## Screenshots
+
+| Main Game | Mission Log |
+|-----------||
+| ![Main Game](docs/screenshot-main.png) | ![Mission Log](docs/screenshot-missions.png) |
+
+> **Note:** Replace the placeholder images above with actual screenshots of the game in action.
 
 ## Quick Start
 
@@ -69,6 +76,18 @@ elves-orcs/
 ├── vitest.config.ts       # Vitest configuration
 └── tsconfig.json          # TypeScript configuration
 ```
+
+## Contributing
+
+Contributions are welcome! Here's how you can help:
+
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
+4. **Push** to the branch (`git push origin feature/amazing-feature`)
+5. **Open** a Pull Request
+
+Please make sure your code passes all existing tests and follows the project's coding style. If you're adding new features, consider adding corresponding tests as well.
 
 ## License
 
