@@ -21,8 +21,12 @@ export const SPY_COUNT = 2;
  * Uses provided random() for testability (pass Math.random for prod, ()=>0.3 for tests).
  */
 export function selectSpies(random: () => number = Math.random): CharacterId[] {
-  const shuffled = [...CHARACTERS].sort(() => 0.5 - random());
-  return shuffled.slice(0, SPY_COUNT).map(c => c.id) as CharacterId[];
+  const arr = [...CHARACTERS];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr.slice(0, SPY_COUNT).map(c => c.id) as CharacterId[];
 }
 
 /** Count how many spies are in the given council. */

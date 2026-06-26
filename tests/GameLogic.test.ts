@@ -5,6 +5,14 @@ import {
 } from '../src/game/logic';
 import type { NoteStatus } from '../src/game/logic';
 
+// Seeded PRNG for deterministic tests
+function seededRandom(seed: number) {
+  return function() {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed / 0x7fffffff;
+  };
+}
+
 // Mock App.tsx CHARACTERS to match logic.ts
 vi.mock('../src/App', () => ({ default: () => null }));
 
@@ -37,19 +45,20 @@ describe('Game Constants', () => {
 
 describe('selectSpies', () => {
   it('selects exactly 2 spies', () => {
-    const spies = selectSpies(() => 0.5);
+    const spies = selectSpies(seededRandom(12345));
     expect(spies).toHaveLength(2);
   });
 
   it('spies are different characters', () => {
-    const spies = selectSpies(() => 0.5);
+    const spies = selectSpies(seededRandom(12345));
     expect(spies[0]).not.toBe(spies[1]);
   });
 
   it('spies are valid character ids', () => {
     const validIds = CHARACTERS.map(c => c.id);
+    const rng = seededRandom(42);
     for (let i = 0; i < 100; i++) {
-      const spies = selectSpies();
+      const spies = selectSpies(rng);
       expect(validIds).toContain(spies[0]);
       expect(validIds).toContain(spies[1]);
     }
@@ -57,8 +66,9 @@ describe('selectSpies', () => {
 
   it('all characters can be selected as spies', () => {
     const selectedSpies = new Set<string>();
+    const rng = seededRandom(999);
     for (let i = 0; i < 1000; i++) {
-      const spies = selectSpies();
+      const spies = selectSpies(rng);
       selectedSpies.add(spies[0]);
       selectedSpies.add(spies[1]);
     }
@@ -66,12 +76,17 @@ describe('selectSpies', () => {
   });
 
   it('uses injected random function', () => {
-    // random=0.5 means shuffled stays in original order
-    const spies = selectSpies(() => 0.5);
-    // With 0.5, sort is stable-ish; just verify we get 2 valid ids
+    // With a seeded RNG, results are deterministic
+    const spies = selectSpies(seededRandom(12345));
     expect(spies).toHaveLength(2);
     expect(CHARACTERS.map(c => c.id)).toContain(spies[0]);
     expect(CHARACTERS.map(c => c.id)).toContain(spies[1]);
+  });
+
+  it('produces deterministic output with same seed', () => {
+    const spies1 = selectSpies(seededRandom(777));
+    const spies2 = selectSpies(seededRandom(777));
+    expect(spies1).toEqual(spies2);
   });
 });
 
