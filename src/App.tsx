@@ -33,10 +33,36 @@ export default function App() {
   const [notes, setNotes] = useState<Record<string, NoteStatus>>({});
   const [isAccusing, setIsAccusing] = useState(false);
   const [accused, setAccused] = useState<string[]>([]);
+  const [autoPlay, setAutoPlay] = useState(false);
+  const [autoSpeed, setAutoSpeed] = useState(800);
 
   useEffect(() => {
     startNewGame();
   }, []);
+
+  // Auto-play logic: AI plays the game automatically
+  useEffect(() => {
+    if (!autoPlay || gameState !== 'playing') return;
+
+    const timer = setTimeout(() => {
+      if (currentlyAccusing) {
+        // AI makes accusation: pick 2 random unmarked characters
+        const candidates = CHARACTERS.filter(c => !accused.map(a => a).includes(c.id));
+        const selected = candidates.sort(() => Math.random() - 0.5).slice(0, 2);
+        setAccused(selected.map(c => c.id));
+      } else if (currentCouncil.length < 3) {
+        // AI selects council: pick 3 random characters
+        const candidates = CHARACTERS.filter(c => !currentCouncil.includes(c.id));
+        const selected = candidates[Math.floor(Math.random() * candidates.length)];
+        setCurrentCouncil([...currentCouncil, selected.id]);
+      } else if (currentCouncil.length === 3 && !currentlyAccusing) {
+        // Dispatch council
+        dispatchCouncil();
+      }
+    }, autoSpeed);
+
+    return () => clearTimeout(timer);
+  }, [autoPlay, currentCouncil, currentlyAccusing, gameState, autoSpeed]);
 
   const startNewGame = () => {
     const spyIds = selectSpies();
@@ -179,6 +205,40 @@ export default function App() {
           <p>
             <strong className="text-amber-500 font-medium">How to play:</strong> You have 5 days to find the 2 hidden spies. Each day, send 3 characters on a mission. The log will tell you how many spies were on that mission. Use the <Check size={14} className="inline text-emerald-500/70 mx-1"/> and <Skull size={14} className="inline text-red-500/70 mx-1"/> buttons to take notes.
           </p>
+        </div>
+
+        {/* Auto-Play Controls */}
+        <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 mb-8 max-w-3xl mx-auto shadow-sm backdrop-blur-sm">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  if (autoPlay) {
+                    setAutoPlay(false);
+                  } else {
+                    startNewGame();
+                    setAutoPlay(true);
+                  }
+                }}
+                className={`px-5 py-2.5 rounded-lg font-medium text-sm transition-all ${
+                  autoPlay
+                    ? 'bg-red-600 hover:bg-red-500 text-white'
+                    : 'bg-amber-600 hover:bg-amber-500 text-white'
+                }`}
+              >
+                {autoPlay ? '⏸ Stop AI' : '▶ Watch AI Play'}
+              </button>
+              {autoPlay && (
+                <span className="text-xs text-amber-400 animate-pulse">AI is playing...</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500">Speed:</span>
+              <button onClick={() => setAutoSpeed(1200)} className={`px-2 py-1 rounded text-xs ${autoSpeed === 1200 ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Slow</button>
+              <button onClick={() => setAutoSpeed(800)} className={`px-2 py-1 rounded text-xs ${autoSpeed === 800 ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Normal</button>
+              <button onClick={() => setAutoSpeed(400)} className={`px-2 py-1 rounded text-xs ${autoSpeed === 400 ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Fast</button>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
