@@ -17,6 +17,15 @@ Originally a tabletop game popular in Estonia, Kings & Spies tests your ability 
 
 ![Demo](docs/demo.gif)
 
+## Try it
+
+🕵️ **[Try Live Demo](https://stennu718.github.io/elves-orcs/demo/)** — watch AI play, solve the deduction puzzle
+
+Or run locally:
+```bash
+npm install && npm run dev
+```
+
 ## Features
 
 - **Social deduction gameplay** — Analyze mission results to uncover hidden spies
