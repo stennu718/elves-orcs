@@ -5,6 +5,7 @@
 
 [![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen.svg)](https://stennu718.github.io/elves-orcs/)
 [![Version](https://img.shields.io/github/v/release/stennu718/elves-orcs)](https://github.com/stennu718/elves-orcs/releases)
+[![Docker](https://img.shields.io/badge/Docker-Build-2496ED.svg?logo=docker&logoColor=white)](https://github.com/stennu718/elves-orcs/pkgs/container/elves-orcs)
 
 ![Gameplay](docs/screenshot.png)
 
