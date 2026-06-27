@@ -13,6 +13,10 @@ Elves & Orcs is a digital remake of the Estonian social deduction game **"Kings 
 
 Originally a tabletop game popular in Estonia, Kings & Spies tests your ability to analyze behavior, track patterns, and make logical deductions under pressure. This digital adaptation brings the experience to life with an interactive interface and streamlined gameplay.
 
+## Demo
+
+![Demo](docs/demo.gif)
+
 ## Features
 
 - **Social deduction gameplay** — Analyze mission results to uncover hidden spies
