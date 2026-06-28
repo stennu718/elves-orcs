@@ -1,7 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   CHARACTERS, selectSpies, countSpiesInCouncil, checkAccusation,
   toggleNote, combinations, MAX_DAY, COUNCIL_SIZE, SPY_COUNT,
+  isValidCouncil, isValidAccusation, calculateSpyProbability,
+  calculateInformationScore, generateAllCouncils, generateAllAccusations,
 } from '../src/game/logic';
 import type { NoteStatus } from '../src/game/logic';
 
@@ -12,9 +14,6 @@ function seededRandom(seed: number) {
     return seed / 0x7fffffff;
   };
 }
-
-// Mock App.tsx CHARACTERS to match logic.ts
-vi.mock('../src/App', () => ({ default: () => null }));
 
 describe('Game Constants', () => {
   it('has exactly 8 characters', () => {
@@ -76,7 +75,6 @@ describe('selectSpies', () => {
   });
 
   it('uses injected random function', () => {
-    // With a seeded RNG, results are deterministic
     const spies = selectSpies(seededRandom(12345));
     expect(spies).toHaveLength(2);
     expect(CHARACTERS.map(c => c.id)).toContain(spies[0]);
@@ -87,6 +85,25 @@ describe('selectSpies', () => {
     const spies1 = selectSpies(seededRandom(777));
     const spies2 = selectSpies(seededRandom(777));
     expect(spies1).toEqual(spies2);
+  });
+
+  it('Fisher-Yates shuffle produces uniform distribution', () => {
+    const counts: Record<string, number> = {};
+    const rng = seededRandom(42);
+    const iterations = 8000;
+    for (let i = 0; i < iterations; i++) {
+      const spies = selectSpies(rng);
+      for (const s of spies) {
+        counts[s] = (counts[s] || 0) + 1;
+      }
+    }
+    // Each character should appear roughly equally often
+    const expected = (iterations * 2) / 8;
+    for (const id of CHARACTERS.map(c => c.id)) {
+      const count = counts[id] || 0;
+      expect(count).toBeGreaterThan(expected * 0.7);
+      expect(count).toBeLessThan(expected * 1.3);
+    }
   });
 });
 
@@ -105,6 +122,14 @@ describe('countSpiesInCouncil', () => {
 
   it('counts correctly with empty council', () => {
     expect(countSpiesInCouncil([], ['queen', 'guard'])).toBe(0);
+  });
+
+  it('counts correctly with empty spies', () => {
+    expect(countSpiesInCouncil(['knight', 'diplomat', 'bishop'], [])).toBe(0);
+  });
+
+  it('counts correctly when all are spies', () => {
+    expect(countSpiesInCouncil(['queen', 'guard', 'knight'], ['queen', 'guard', 'knight'])).toBe(3);
   });
 });
 
@@ -133,6 +158,10 @@ describe('checkAccusation', () => {
   it('empty accusation fails', () => {
     expect(checkAccusation([], ['queen', 'guard'])).toBe(false);
   });
+
+  it('duplicate in accusation fails', () => {
+    expect(checkAccusation(['queen', 'queen'], ['queen', 'guard'])).toBe(false);
+  });
 });
 
 describe('toggleNote', () => {
@@ -150,6 +179,10 @@ describe('toggleNote', () => {
 
   it('toggles from unknown to innocent', () => {
     expect(toggleNote('unknown' as NoteStatus, 'innocent' as NoteStatus)).toBe('innocent');
+  });
+
+  it('toggles from innocent back to unknown', () => {
+    expect(toggleNote('innocent' as NoteStatus, 'innocent' as NoteStatus)).toBe('unknown');
   });
 
   it('all note statuses are valid', () => {
@@ -175,10 +208,129 @@ describe('combinations', () => {
     expect(combinations(5, 5)).toBe(1);
   });
 
+  it('C(n,k) = C(n, n-k)', () => {
+    expect(combinations(8, 3)).toBe(combinations(8, 5));
+    expect(combinations(7, 2)).toBe(combinations(7, 5));
+  });
+
+  it('C(n,1) = n', () => {
+    expect(combinations(8, 1)).toBe(8);
+    expect(combinations(5, 1)).toBe(5);
+  });
+
+  it('C(n,k) = 0 when k > n', () => {
+    expect(combinations(3, 5)).toBe(0);
+  });
+
   it('only 1 correct accusation out of 28 possible', () => {
     const totalCombinations = combinations(8, 2);
     const correctCombinations = 1;
     const winProbability = correctCombinations / totalCombinations;
     expect(winProbability).toBeCloseTo(0.0357, 3);
+  });
+});
+
+describe('isValidCouncil', () => {
+  it('valid council of 3 unique characters', () => {
+    expect(isValidCouncil(['knight', 'diplomat', 'bishop'])).toBe(true);
+  });
+
+  it('invalid: wrong size', () => {
+    expect(isValidCouncil(['knight', 'diplomat'])).toBe(false);
+    expect(isValidCouncil(['knight', 'diplomat', 'bishop', 'queen'])).toBe(false);
+  });
+
+  it('invalid: duplicates', () => {
+    expect(isValidCouncil(['knight', 'knight', 'diplomat'])).toBe(false);
+  });
+
+  it('invalid: empty', () => {
+    expect(isValidCouncil([])).toBe(false);
+  });
+});
+
+describe('isValidAccusation', () => {
+  it('valid accusation of 2 unique characters', () => {
+    expect(isValidAccusation(['queen', 'guard'])).toBe(true);
+  });
+
+  it('invalid: wrong size', () => {
+    expect(isValidAccusation(['queen'])).toBe(false);
+    expect(isValidAccusation(['queen', 'guard', 'knight'])).toBe(false);
+  });
+
+  it('invalid: duplicates', () => {
+    expect(isValidAccusation(['queen', 'queen'])).toBe(false);
+  });
+});
+
+describe('calculateSpyProbability', () => {
+  it('returns base probability with no history', () => {
+    const prob = calculateSpyProbability('knight', []);
+    expect(prob).toBeCloseTo(2 / 8, 2);
+  });
+
+  it('returns 0 for confirmed innocent (on mission with 0 spies)', () => {
+    const history = [{ council: ['knight', 'diplomat', 'bishop'], spiesCount: 0 }];
+    const prob = calculateSpyProbability('knight', history);
+    expect(prob).toBe(0);
+  });
+
+  it('returns higher probability for spy on mission with spies', () => {
+    const history = [{ council: ['knight', 'diplomat', 'bishop'], spiesCount: 2 }];
+    const prob = calculateSpyProbability('knight', history);
+    expect(prob).toBeGreaterThan(0);
+  });
+});
+
+describe('calculateInformationScore', () => {
+  it('returns 0 with no history', () => {
+    expect(calculateInformationScore([])).toBe(0);
+  });
+
+  it('returns higher score for informative missions', () => {
+    const history = [
+      { council: ['knight', 'diplomat', 'bishop'], spiesCount: 0 },
+      { council: ['knight', 'diplomat', 'queen'], spiesCount: 1 },
+    ];
+    const score = calculateInformationScore(history);
+    expect(score).toBeGreaterThan(0);
+    expect(score).toBeLessThanOrEqual(100);
+  });
+});
+
+describe('generateAllCouncils', () => {
+  it('generates exactly 56 councils', () => {
+    const councils = generateAllCouncils();
+    expect(councils).toHaveLength(56);
+  });
+
+  it('each council has 3 unique characters', () => {
+    const councils = generateAllCouncils();
+    for (const c of councils) {
+      expect(c).toHaveLength(3);
+      expect(new Set(c).size).toBe(3);
+    }
+  });
+
+  it('all councils are unique', () => {
+    const councils = generateAllCouncils();
+    const keys = councils.map(c => c.sort().join(','));
+    expect(new Set(keys).size).toBe(56);
+  });
+});
+
+describe('generateAllAccusations', () => {
+  it('generates exactly 28 accusations', () => {
+    const accusations = generateAllAccusations();
+    expect(accusations).toHaveLength(28);
+  });
+
+  it('each accusation has 2 unique characters', () => {
+    const accusations = generateAllAccusations();
+    for (const a of accusations) {
+      expect(a).toHaveLength(2);
+      expect(new Set(a).size).toBe(2);
+    }
   });
 });
